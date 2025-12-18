@@ -1,0 +1,58 @@
+.animate {
+  animation: viberation 1s ease-in-out infinite,
+    opa-glow 1s ease-in-out infinite;
+  background-color: transparent !important;
+  overflow: hidden !important;
+  border-radius: 10px;
+}
+.animate-left {
+  animation: viberation-left 0.75s ease-in-out;
+}
+.animate-right {
+  animation: viberation-right 0.75s ease-in-out;
+}
+
+@keyframes viberation {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes viberation-left {
+  0% {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes viberation-right {
+  0% {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes opa-glow {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.MuiContainer-root.MuiContainer-maxWidthLg.css-16aeghx-MuiContainer-root {
+  background-color: transparent !important;
+}

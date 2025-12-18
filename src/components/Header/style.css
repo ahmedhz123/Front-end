@@ -1,0 +1,25 @@
+.MuiPaper-root.MuiPaper-elevation.MuiPaper-rounded.MuiPaper-elevation0 {
+  background-color: transparent;
+}
+
+.MuiAccordionDetails-root.css-1lj39kh-MuiAccordionDetails-root {
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.MuiList-root.MuiList-padding.css-htcs3b-MuiList-root {
+  background-color: transparent;
+}
+
+.MuiButtonBase-root.MuiListItemButton-root.MuiListItemButton-gutters:hover {
+  background-color: transparent;
+}
+
+/* .MuiList-root.MuiList-padding.MuiMenu-list {
+  background-color: #1e1e1e;
+} */
+
+.MuiList-root.MuiList-padding.MuiMenu-list.css-1toxriw-MuiList-root-MuiMenu-list {
+  width: 200px;
+  background-color: #1e1e1e;
+}

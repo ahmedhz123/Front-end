@@ -1,0 +1,15 @@
+div.MuiPaper-root.MuiPaper-elevation.MuiPaper-rounded {
+  overflow: hidden;
+}
+div.MuiPaper-root.MuiPaper-elevation.MuiPaper-rounded:hover
+  img.MuiCardMedia-root.MuiCardMedia-media.MuiCardMedia-img {
+  scale: 1.01;
+  cursor: "pointer";
+}
+
+img.MuiCardMedia-root.MuiCardMedia-media.MuiCardMedia-img {
+  transition: 0.5s;
+  -webkit-optimize-contrast: high;
+  filter: contrast(105%) brightness(105%);
+  backface-visibility: hidden;
+}

@@ -22,10 +22,49 @@ type Product = {
   rating: number;
   title: string;
 };
-const CardComp = ({ title, desc, rating, category, price, productImg }: Product) => {
+const CardComp = ({
+  title,
+  desc,
+  rating,
+  category,
+  price,
+  productImg,
+}: Product) => {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   //@ts-expect-error
   const { open, setOpen } = useContext(DialogContext);
+  const apiUrl = import.meta.env.VITE_API_URL || "";
+
+  // Fix null length error: Check if productImg exists and has items
+  const getImageUrl = () => {
+    if (!productImg || productImg.length === 0) {
+      return "/placeholder-image.jpg"; // Fallback image
+    }
+
+    const firstImage = productImg[0];
+    if (!firstImage || !firstImage.url) {
+      return "/placeholder-image.jpg";
+    }
+
+    const imageUrl = firstImage.url;
+
+    // Handle Strapi image URLs - they can be relative paths
+    // If URL is relative (starts with /), prepend the backend URL
+    if (imageUrl.startsWith("/")) {
+      // Remove trailing slash from apiUrl if present
+      const baseUrl = apiUrl.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl;
+      return `${baseUrl}${imageUrl}`;
+    }
+
+    // If URL already has protocol (http/https), use as is
+    if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+      return imageUrl;
+    }
+
+    // Fallback
+    return "/placeholder-image.jpg";
+  };
+
   const handleOpen = () => {
     setOpen(true);
     console.log(open);
@@ -39,12 +78,16 @@ const CardComp = ({ title, desc, rating, category, price, productImg }: Product)
     <Card sx={{ maxWidth: 345, backgroundColor: "transparent" }}>
       <CardMedia
         component="img"
-        image={`${productImg[0].url}`}
+        image={getImageUrl()}
         sx={{
           objectFit: "cover !important",
           width: "100%",
           height: "300px",
           imageRendering: "auto",
+        }}
+        onError={(e) => {
+          // Fallback if image fails to load
+          e.currentTarget.src = "/placeholder-image.jpg";
         }}
       />
       <CardContent>

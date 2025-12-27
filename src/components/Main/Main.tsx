@@ -1,6 +1,7 @@
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
+import Button from "@mui/material/Button";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import React, { useEffect, useState } from "react";
@@ -27,8 +28,13 @@ const Main = () => {
   const apiUrl = import.meta.env.VITE_API_URL;
   const [data, setData] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState("all");
-  console.log("API URL:", `${apiUrl}/api/products?populate=*`);
+  
+  if (!apiUrl) {
+    console.error("VITE_API_URL is not set in environment variables");
+  }
+  
   const handleAlignment = (
     event: React.MouseEvent<HTMLElement>,
     newAlignment: string
@@ -38,15 +44,108 @@ const Main = () => {
     }
     console.log(event);
   };
+  
   async function fetchProducts() {
+    if (!apiUrl) {
+      setError("API URL is not configured");
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
-      const response = await fetch(`${apiUrl}/api/products?populate=*`);
-      const data = await response.json();
-      console.log("Fetched products:", data.data);
-      setData(data.data);
-    } catch (error) {
+      setError(null);
+      
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      const response = await fetch(`${apiUrl}/api/products?populate=*`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      // Check if response is ok
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      // Handle Strapi response structure
+      if (result.data && Array.isArray(result.data)) {
+        // Transform Strapi image format - handle both v4 and v5 formats
+        const transformedData = result.data.map((product: any) => {
+          // Check if it's Strapi v4 format (with attributes) or v5 format (direct properties)
+          const isV4Format = product.attributes !== undefined;
+          const productData = isV4Format ? product.attributes : product;
+          
+          // Handle images - Strapi returns images with populate=* in format:
+          // { data: [{ id, attributes: { url: '/uploads/...' } }] } or similar
+          let productImg: imgs[] = [];
+          if (productData.productImg) {
+            const imgData = productData.productImg;
+            
+            // Most common case: Strapi returns { data: [...] }
+            if (imgData.data) {
+              const imgArray = Array.isArray(imgData.data) ? imgData.data : [imgData.data];
+              productImg = imgArray
+                .map((img: any) => {
+                  // Extract URL from attributes.url or direct url property
+                  const url = img.attributes?.url || img.url || '';
+                  return url ? { url } : null;
+                })
+                .filter((img: imgs | null): img is imgs => img !== null);
+            }
+            // Handle direct array (shouldn't happen with populate, but handle it)
+            else if (Array.isArray(imgData)) {
+              productImg = imgData
+                .map((img: any) => {
+                  const url = img.attributes?.url || img.url || img.attributes?.formats?.thumbnail?.url || '';
+                  return url ? { url } : null;
+                })
+                .filter((img: imgs | null): img is imgs => img !== null);
+            }
+            // Handle direct URL string
+            else if (typeof imgData === 'string') {
+              productImg = [{ url: imgData }];
+            }
+            // Handle object with url property
+            else if (imgData.url) {
+              productImg = [{ url: imgData.url }];
+            }
+          }
+          
+          return {
+            id: product.id,
+            category: productData.category || '',
+            productDesc: productData.productDesc || '',
+            productImg: productImg,
+            productPrice: productData.productPrice || 0,
+            productRating: productData.productRating || 0,
+            productTitle: productData.productTitle || '',
+          };
+        });
+        setData(transformedData);
+      } else if (Array.isArray(result)) {
+        // Fallback: if data is directly an array (shouldn't happen with Strapi, but handle it)
+        setData(result);
+      } else {
+        setData([]);
+      }
+    } catch (error: any) {
       console.error("Error fetching products:", error);
+      if (error.name === 'AbortError') {
+        setError("Request timed out. Please try again.");
+      } else {
+        setError(error.message || "Failed to fetch products. Please check your connection and try again.");
+      }
+      setData([]);
     } finally {
       setLoading(false);
     }
@@ -143,6 +242,28 @@ const Main = () => {
           >
             <CircularProgress />
           </Stack>
+        ) : error ? (
+          <Box sx={{ textAlign: "center", py: 4 }}>
+            <Typography variant="h6" color="error" gutterBottom>
+              Error Loading Products
+            </Typography>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              {error}
+            </Typography>
+            <Button 
+              variant="contained" 
+              onClick={fetchProducts}
+              sx={{ mt: 2 }}
+            >
+              Retry
+            </Button>
+          </Box>
+        ) : data.length === 0 ? (
+          <Box sx={{ textAlign: "center", py: 4 }}>
+            <Typography variant="h6" color="text.secondary">
+              No products found
+            </Typography>
+          </Box>
         ) : (
           <motion.div
             layout

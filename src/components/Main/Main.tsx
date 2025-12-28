@@ -80,62 +80,78 @@ const Main = () => {
       // Handle Strapi response structure
       if (result.data && Array.isArray(result.data)) {
         // Transform Strapi image format - handle both v4 and v5 formats
-        const transformedData = result.data.map((product: any) => {
-          // Check if it's Strapi v4 format (with attributes) or v5 format (direct properties)
-          const isV4Format = product.attributes !== undefined;
-          const productData = isV4Format ? product.attributes : product;
-          
-          // Handle images - Strapi returns images with populate=* in format:
-          // { data: [{ id, attributes: { url: '/uploads/...' } }] } or similar
-          let productImg: imgs[] = [];
-          if (productData.productImg) {
-            const imgData = productData.productImg;
+        const transformedData = result.data
+          .map((product: any) => {
+            // Safety check: ensure product exists
+            if (!product) return null;
             
-            // Most common case: Strapi returns { data: [...] }
-            if (imgData.data) {
-              const imgArray = Array.isArray(imgData.data) ? imgData.data : [imgData.data];
-              productImg = imgArray
-                .map((img: any) => {
-                  // Extract URL from attributes.url or direct url property
-                  const url = img.attributes?.url || img.url || '';
-                  return url ? { url } : null;
-                })
-                .filter((img: imgs | null): img is imgs => img !== null);
+            // Check if it's Strapi v4 format (with attributes) or v5 format (direct properties)
+            const isV4Format = product.attributes !== undefined;
+            const productData = isV4Format ? product.attributes : product;
+            
+            // Safety check: ensure productData exists
+            if (!productData) return null;
+            
+            // Handle images - Strapi returns images with populate=* in format:
+            // { data: [{ id, attributes: { url: '/uploads/...' } }] } or similar
+            let productImg: imgs[] = [];
+            if (productData.productImg) {
+              const imgData = productData.productImg;
+              
+              // Most common case: Strapi returns { data: [...] }
+              if (imgData && imgData.data) {
+                const imgArray = Array.isArray(imgData.data) ? imgData.data : [imgData.data];
+                productImg = imgArray
+                  .map((img: any) => {
+                    if (!img) return null;
+                    // Extract URL from attributes.url or direct url property
+                    const url = img.attributes?.url || img.url || '';
+                    return url ? { url } : null;
+                  })
+                  .filter((img: imgs | null): img is imgs => img !== null);
+              }
+              // Handle direct array (shouldn't happen with populate, but handle it)
+              else if (Array.isArray(imgData)) {
+                productImg = imgData
+                  .map((img: any) => {
+                    if (!img) return null;
+                    const url = img.attributes?.url || img.url || img.attributes?.formats?.thumbnail?.url || '';
+                    return url ? { url } : null;
+                  })
+                  .filter((img: imgs | null): img is imgs => img !== null);
+              }
+              // Handle direct URL string
+              else if (typeof imgData === 'string' && imgData.trim() !== '') {
+                productImg = [{ url: imgData }];
+              }
+              // Handle object with url property
+              else if (imgData && typeof imgData === 'object' && imgData.url) {
+                productImg = [{ url: imgData.url }];
+              }
             }
-            // Handle direct array (shouldn't happen with populate, but handle it)
-            else if (Array.isArray(imgData)) {
-              productImg = imgData
-                .map((img: any) => {
-                  const url = img.attributes?.url || img.url || img.attributes?.formats?.thumbnail?.url || '';
-                  return url ? { url } : null;
-                })
-                .filter((img: imgs | null): img is imgs => img !== null);
-            }
-            // Handle direct URL string
-            else if (typeof imgData === 'string') {
-              productImg = [{ url: imgData }];
-            }
-            // Handle object with url property
-            else if (imgData.url) {
-              productImg = [{ url: imgData.url }];
-            }
-          }
-          
-          return {
-            id: product.id,
-            category: productData.category || '',
-            productDesc: productData.productDesc || '',
-            productImg: productImg,
-            productPrice: productData.productPrice || 0,
-            productRating: productData.productRating || 0,
-            productTitle: productData.productTitle || '',
-          };
-        });
+            
+            // Ensure we have at least an ID to create a valid product
+            if (!product.id) return null;
+            
+            return {
+              id: product.id,
+              category: productData.category || 'uncategorized',
+              productDesc: productData.productDesc || '',
+              productImg: productImg.length > 0 ? productImg : [],
+              productPrice: typeof productData.productPrice === 'number' ? productData.productPrice : 0,
+              productRating: typeof productData.productRating === 'number' ? productData.productRating : 0,
+              productTitle: productData.productTitle || 'Untitled Product',
+            };
+          })
+          .filter((product: Product | null): product is Product => product !== null);
+        
         setData(transformedData);
       } else if (Array.isArray(result)) {
         // Fallback: if data is directly an array (shouldn't happen with Strapi, but handle it)
-        setData(result);
+        const safeArray = result.filter((item: any) => item && item.id);
+        setData(safeArray);
       } else {
+        console.warn('Unexpected API response format:', result);
         setData([]);
       }
     } catch (error: any) {
